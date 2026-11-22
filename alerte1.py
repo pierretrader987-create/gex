@@ -211,20 +211,12 @@ if (alerte and nouvelle) or rapport:
                 _m.append(h_)
             _hist=_m
             _JS=["lun","mar","mer","jeu","ven","sam","dim"]
-            fig.canvas.draw(); _rd=fig.canvas.get_renderer(); _placed=[]
-            _cand=[(0,16),(0,60),(0,-60),(60,0),(-60,0),(0,-16),(26,14),(-26,14),(26,-14),(-26,-14),(0,30),(0,-30),(40,0),(-40,0),(40,24),(-40,24),(40,-24),(-40,-24),(0,44),(0,-44)]
-            for i_,W_,k_ in _hist:
-                ax.plot([xs[i_]],[ys[i_]],"D",color=_cw[typ(W_)],ms=8,mec="white",mew=1.2,zorder=8)
-                lab=f"{_JS[xs[i_].weekday()]} {xs[i_]:%H}h · {'arrivée' if k_=='A' else 'traversé'} {typ(W_)} {fm(W_)}"
-                for dx_,dy_ in _cand:
-                    t_=ax.annotate(lab,(xs[i_],ys[i_]),xytext=(dx_,dy_),textcoords="offset points",fontsize=6.3,color="white",ha="center",va="center",zorder=10,
-                        bbox=dict(boxstyle="round,pad=0.18",fc=_cw[typ(W_)],ec="none",alpha=0.92),arrowprops=dict(arrowstyle="-",color=_cw[typ(W_)],lw=0.7))
-                    bb=t_.get_window_extent(_rd).expanded(1.03,1.15)
-                    axb=ax.get_window_extent(_rd)
-                    if bb.x0>=axb.x0 and bb.x1<=axb.x1+90 and all(not bb.overlaps(p_) for p_ in _placed): _placed.append(bb); break
-                    if (dx_,dy_)==_cand[-1]: _placed.append(bb)
-                    else: t_.remove()
-            fig.text(0.5,0.185,f"{len(_hist)} alertes cette semaine : jour, heure, type · recalculé avec les murs d'aujourd'hui",color=MUTED,fontsize=9.5,ha="center",va="center")
+            _HL=[]
+            for n_,(i_,W_,k_) in enumerate(_hist,1):
+                ax.plot([xs[i_]],[ys[i_]],"o",color=_cw[typ(W_)],ms=13,mec="white",mew=1.3,zorder=8)
+                ax.text(xs[i_],ys[i_],str(n_),color="white",fontsize=7.5,fontweight="bold",ha="center",va="center",zorder=9)
+                _HL.append((n_,f"{_JS[xs[i_].weekday()]} {xs[i_].day}/{xs[i_].month} {xs[i_]:%Hh} · {'arrivée sur' if k_=='A' else 'traversé'} mur {typ(W_)} {fm(W_)}",_cw[typ(W_)]))
+            fig.text(0.5,0.185,f"{len(_hist)} alertes cette semaine (liste numérotée sous le dessin) · recalculé avec les murs d'aujourd'hui",color=MUTED,fontsize=9.5,ha="center",va="center")
         except Exception: pass
         try:
             _E=[]
@@ -252,6 +244,22 @@ if (alerte and nouvelle) or rapport:
         if conf: fig.text(0.06,y0-0.08,"Confirmation",color=MUTED,fontsize=12,va="center"); fig.text(0.20,y0-0.08,conf,color=INK,fontsize=13,fontweight="bold",va="center")
         fig.text(0.5,0.025,"Règle de position, non validée sur le BTC · signe call/put = convention · données Deribit",color=MUTED,fontsize=10,ha="center",va="center")
         png="/tmp/alerte_btc.png"; fig.savefig(png,facecolor=BG); plt.close(fig)
+        try:
+            if _HL:
+                from PIL import Image
+                h2=0.34*((len(_HL)+1)//2)+0.9
+                f2=plt.figure(figsize=(9,h2),dpi=100,facecolor=BG)
+                f2.text(0.06,1-0.45/h2,f"Alertes de la semaine (recalculées avec les murs d'aujourd'hui)",color=INK,fontsize=13,fontweight="bold",va="center")
+                half=(len(_HL)+1)//2
+                for idx,(n_,tx,co_) in enumerate(_HL):
+                    col=idx//half; row=idx%half
+                    x0=0.06+col*0.47; yy=1-(0.95+row*0.34)/h2
+                    f2.text(x0,yy,str(n_),color="white",fontsize=9,fontweight="bold",ha="center",va="center",bbox=dict(boxstyle="circle,pad=0.3",fc=co_,ec="none"))
+                    f2.text(x0+0.03,yy,tx,color=INK,fontsize=10,va="center")
+                f2.savefig("/tmp/_liste.png",facecolor=BG); plt.close(f2)
+                A_=Image.open(png).convert("RGB"); B_=Image.open("/tmp/_liste.png").convert("RGB")
+                C_=Image.new("RGB",(A_.width,A_.height+B_.height),(21,22,28)); C_.paste(A_,(0,0)); C_.paste(B_,(0,A_.height)); C_.save(png)
+        except Exception: pass
     except Exception as e:
         png=None; carte+=f"\n(image indisponible : {type(e).__name__})"
 print(json.dumps(dict(heure_paris=hp.hour,jour_paris=hp.weekday(),alerte=alerte,nouvelle=nouvelle,rapport=rapport,png=png,carte=carte,suite=suite,details=details,csv=csv),ensure_ascii=False))
