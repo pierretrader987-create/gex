@@ -227,6 +227,23 @@ if (alerte and nouvelle) or rapport:
                     else: t_.remove()
             fig.text(0.5,0.185,f"{len(_hist)} alertes cette semaine : jour, heure, type · recalculé avec les murs d'aujourd'hui",color=MUTED,fontsize=9.5,ha="center",va="center")
         except Exception: pass
+        try:
+            _E=[]
+            _gen={"Fed : décision":("20:00","2024-11-07 2024-12-18 2025-01-29 2025-03-19 2025-05-07 2025-06-18 2025-07-30 2025-09-17 2025-10-29 2025-12-10 2026-01-28 2026-03-18 2026-04-29 2026-06-17 2026-07-29 2026-09-16 2026-10-28 2026-12-09","#a371f7"),
+                  "CPI (inflation US)":("14:30","2026-10-14 2026-11-10 2026-12-10","#39c5cf"),
+                  "Emploi US":("14:30","2026-10-02 2026-11-06","#ffa657")}
+            for nm_,(hh_,ds_,co_) in _gen.items():
+                for d_ in ds_.split(): _E.append((datetime.fromisoformat(d_+"T"+hh_+":00").replace(tzinfo=TZ),nm_,co_))
+            for d_,nm_,co_ in (("2026-11-17T14:30","Ventes au détail US (oct.)","#ffa657"),("2026-11-18T20:00","Fed : procès-verbal","#a371f7"),("2026-11-19T14:30","Chômage hebdo US","#ffa657")):
+                _E.append((datetime.fromisoformat(d_+":00").replace(tzinfo=TZ),nm_,co_))
+            _E=sorted(e for e in _E if xs[0]<=e[0]<=xs[-1]+timedelta(hours=14))
+            _yl=ax.get_ylim()
+            for d_,nm_,co_ in _E:
+                ax.axvline(d_,color=co_,lw=1.4,ls=(0,(5,3)),alpha=0.9,zorder=3)
+                ax.text(d_,_yl[0]+(_yl[1]-_yl[0])*0.02,f" {_JS[d_.weekday()]} {d_:%Hh%M} · {nm_}",color=co_,fontsize=7.5,fontweight="bold",rotation=90,va="bottom",ha="right",zorder=11)
+            _txt=("Annonces éco : "+"  ·  ".join(f"{_JS[d_.weekday()]} {d_.day}/{d_.month} {d_:%Hh%M} {nm_}" for d_,nm_,co_ in _E)) if _E else "Annonces éco : aucune cette semaine (Fed / CPI / emploi)"
+            fig.text(0.5,0.150,_txt[:130],color=INK,fontsize=9.5,fontweight="bold",ha="center",va="center")
+        except Exception: pass
         ax.plot([xs[-1]],[ys[-1]],"o",color=INK,ms=8,mec=CARD,mew=2)
         ax.text(xs[0]+timedelta(hours=3),S,f" prix {fm(S)} ",color=BG,fontsize=10.5,fontweight="bold",va="center",bbox=dict(boxstyle="round,pad=0.25",fc=INK,ec="none"))
         y0=0.155
