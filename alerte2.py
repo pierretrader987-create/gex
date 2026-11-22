@@ -7,9 +7,10 @@ from matplotlib.patches import Rectangle,FancyBboxPatch
 B="https://www.deribit.com/api/v2/public/"
 def get(p):
     with urllib.request.urlopen(B+p,timeout=30) as r: return json.load(r)["result"]
-ARG=sys.argv[1:]; JOUR=None
+ARG=sys.argv[1:]; JOUR=None; TITRE=None
 for a in ARG:
     if a.startswith("--jour="): JOUR=dt.datetime.fromisoformat(a.split("=")[1])
+    if a.startswith("--titre="): TITRE=a.split("=",1)[1][:110]
 end=int(time.time()*1000)
 def fetch(res,days):
     J=get(f"get_tradingview_chart_data?instrument_name=BTC-PERPETUAL&resolution={res}&start_timestamp={end-days*86400*1000}&end_timestamp={end}")
@@ -21,7 +22,7 @@ def fetch(res,days):
 S=get("get_index_price?index_name=btc_usd")["index_price"]
 TD,(OD,HD,LD,CD)=(lambda r:(r[0],r[1]))(fetch("1D",1100))
 TH,(OH,HH,LH,CH)=(lambda r:(r[0],r[1]))(fetch("60",8))
-L={"FED":"2024-11-07 2024-12-18 2025-01-29 2025-03-19 2025-05-07 2025-06-18 2025-07-30 2025-08-22 2025-09-17 2025-10-29 2025-12-10 2026-01-28 2026-03-18 2026-04-29 2026-06-17 2026-07-29 2026-09-16 2026-10-28 2026-12-09","CPI":"2024-11-13 2024-12-11 2025-01-15 2025-02-12 2025-03-12 2025-04-10 2025-05-13 2025-06-11 2025-07-15 2025-08-12 2025-09-11 2025-10-24 2025-12-18 2026-01-13 2026-02-13 2026-03-11 2026-04-10 2026-05-12 2026-06-10 2026-07-14 2026-08-12 2026-09-11 2026-10-14 2026-11-10","NFP":"2024-11-01 2024-12-06 2025-01-10 2025-02-07 2025-03-07 2025-04-04 2025-05-02 2025-06-06 2025-07-03 2025-08-01 2025-09-05 2025-11-20 2025-12-16 2026-01-09 2026-02-11 2026-03-06 2026-04-03 2026-05-08 2026-06-05 2026-07-02 2026-08-07 2026-09-04 2026-10-02 2026-11-06"}
+L={"FED":"2024-11-07 2024-12-18 2025-01-29 2025-03-19 2025-05-07 2025-06-18 2025-07-30 2025-08-22 2025-09-17 2025-10-29 2025-12-10 2026-01-28 2026-03-18 2026-04-29 2026-06-17 2026-07-29 2026-09-16 2026-10-28 2026-12-09","CPI":"2024-11-13 2024-12-11 2025-01-15 2025-02-12 2025-03-12 2025-04-10 2025-05-13 2025-06-11 2025-07-15 2025-08-12 2025-09-11 2025-10-24 2025-12-18 2026-01-13 2026-02-13 2026-03-11 2026-04-10 2026-05-12 2026-06-10 2026-07-14 2026-08-12 2026-09-11 2026-10-14 2026-11-10 2026-12-10","NFP":"2024-11-01 2024-12-06 2025-01-10 2025-02-07 2025-03-07 2025-04-04 2025-05-02 2025-06-06 2025-07-03 2025-08-01 2025-09-05 2025-11-20 2025-12-16 2026-01-09 2026-02-11 2026-03-06 2026-04-03 2026-05-08 2026-06-05 2026-07-02 2026-08-07 2026-09-04 2026-10-02 2026-11-06"}
 L={k:[dt.datetime.fromisoformat(x) for x in v.split()] for k,v in L.items()}
 NOM={"FED":"Fed","CPI":"CPI","NFP":"Emploi"}; COL={"FED":"#a371f7","CPI":"#39c5cf","NFP":"#ffa657"}
 def ranges(ys,Xw,minlen):
@@ -68,6 +69,7 @@ if "--force" in ARG: nouvelle=True
 # annonces proches
 now=Tf[-1]+dt.timedelta(days=1) if JOUR else dt.datetime.now()
 proches=[(abs((d-now).days),NOM[k],d) for k,v in L.items() for d in v if abs((d-now).days)<=2]
+derniere=max(((d,NOM[k]) for k,v in L.items() for d in v if d<=now),default=None)
 prochaine=min(((d,NOM[k]) for k,v in L.items() for d in v if d>now),default=None)
 fm=lambda v:f"{v:,.0f}".replace(","," ")
 # dessin
@@ -106,10 +108,10 @@ if nouvelle:
         ax.tick_params(colors="#8b949e",labelsize=8); [s_.set_visible(False) for s_ in ax.spines.values()]; ax.grid(axis="y",color="#2a2e38",lw=.5)
         ax.xaxis.set_major_formatter(md.DateFormatter("%d/%m" if u=="h" else "%m/%y")); ax.autoscale_view(); lo,hi=ax.get_ylim(); ax.set_ylim(lo,hi*1.01)
     fig.text(.06,.150,"Macro",color="#8b949e",fontsize=11,va="center"); fig.text(.2,.150,(f"prochaine annonce : {prochaine[1]} le {prochaine[0].strftime('%d/%m/%Y')}" if prochaine else "pas de date connue"),color="#e6edf3",fontsize=12,fontweight="bold",va="center")
-    fig.text(.06,.122,"Titre",color="#8b949e",fontsize=11,va="center"); fig.text(.2,.122,"non branche (source a choisir)",color="#e6edf3",fontsize=12,va="center")
+    fig.text(.06,.122,"Titre",color="#8b949e",fontsize=11,va="center"); fig.text(.2,.122,(("Derniere annonce : "+TITRE) if TITRE else "non trouve"),color="#e6edf3",fontsize=12,va="center")
     fig.text(.06,.085,"Points = annonces : violet Fed · bleu CPI · orange Emploi   |   boite jaune = range   |   fleches = sortie de range",color="#8b949e",fontsize=8.5,va="center")
     fig.text(.5,.045,"Regle, non validee sur le BTC · donnees Deribit · tu decides",color="#8b949e",fontsize=9,ha="center",va="center")
     png="/tmp/alerte2_gm.png"; fig.savefig(png,facecolor="#14161c"); plt.close(fig)
 else: png=None
 csv=";".join(str(v) for v in [now.strftime("%Y-%m-%d %H:%M"),round(S),V,"/".join(e or "-" for e in ETATS),"NOUVELLE" if nouvelle else "SUITE",(proches[0][1] if proches else "")])
-print(json.dumps(dict(verdict=V,etats=ETATS,nouvelle=nouvelle,png=png,csv=csv),ensure_ascii=False))
+print(json.dumps(dict(verdict=V,etats=ETATS,nouvelle=nouvelle,png=png,csv=csv,derniere=(f"{derniere[1]} du {derniere[0].strftime('%d/%m/%Y')}" if derniere else None)),ensure_ascii=False))
