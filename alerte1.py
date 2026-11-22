@@ -197,6 +197,19 @@ if (alerte and nouvelle) or rapport:
             ax.text(xs[-1]+timedelta(hours=3),objW,f"call {C.get(objW,0):.1f} / put {P.get(objW,0):.1f} M$",color=MUTED,fontsize=8.5,va="top",ha="left",clip_on=False)
         ax.plot(xs,ys,color="#58a6ff",lw=1.8,solid_capstyle="round")
         ax.axhline(S,color=INK,lw=0.9,ls=(0,(1,3)))
+        try:
+            _cw={"PUT":"#3fb950","CALL":"#f85149","CALL+PUT":"#d29922"}; _hist=[]
+            for W_ in walls:
+                for i_ in range(6,len(ys)):
+                    arr=abs(ys[i_]/W_-1)<=0.01 and all(abs(ys[j_]/W_-1)>0.01 for j_ in (i_-1,i_-2))
+                    tb=ys[i_]<W_*0.99 and ys[i_-1]>=W_*0.99 and ys[i_-6]>W_
+                    th=ys[i_]>W_*1.01 and ys[i_-1]<=W_*1.01 and ys[i_-6]<W_
+                    if arr or tb or th: _hist.append((i_,W_,"A" if arr else "T"))
+            for i_,W_,k_ in _hist:
+                ax.plot([xs[i_]],[ys[i_]],"D",color=_cw[typ(W_)],ms=9,mec="white",mew=1.4,zorder=8)
+                ax.text(xs[i_],ys[i_]*1.0,k_,color="white",fontsize=6.5,fontweight="bold",ha="center",va="center",zorder=9)
+            fig.text(0.5,0.185,f"◆ A = arrivée sur un mur · ◆ T = mur traversé · {len(_hist)} cette semaine (recalculé avec les murs d'aujourd'hui)",color=MUTED,fontsize=9.5,ha="center",va="center")
+        except Exception: pass
         ax.plot([xs[-1]],[ys[-1]],"o",color=INK,ms=8,mec=CARD,mew=2)
         ax.text(xs[0]+timedelta(hours=3),S,f" prix {fm(S)} ",color=BG,fontsize=10.5,fontweight="bold",va="center",bbox=dict(boxstyle="round,pad=0.25",fc=INK,ec="none"))
         y0=0.155
@@ -204,14 +217,7 @@ if (alerte and nouvelle) or rapport:
         fig.text(0.06,y0-0.045,"Marché",color=MUTED,fontsize=12,va="center")
         fig.text(0.20,y0-0.045,f"{tend} {chg7:+.1f} % sur 7 j  ·  gamma {'NÉGATIF (les murs freinent peu)' if net<0 else 'POSITIF'}",color=INK,fontsize=14,fontweight="bold",va="center")
         if conf: fig.text(0.06,y0-0.08,"Confirmation",color=MUTED,fontsize=12,va="center"); fig.text(0.20,y0-0.08,conf,color=INK,fontsize=13,fontweight="bold",va="center")
-        try:
-            with urllib.request.urlopen("https://raw.githubusercontent.com/pierretrader987-create/gex/main/alerte2.py",timeout=20) as _r: open("/tmp/_a2.py","wb").write(_r.read())
-            _o=subprocess.run([sys.executable,"-I","/tmp/_a2.py","--resume"],capture_output=True,text=True,timeout=90).stdout.strip().splitlines()[-1]
-            _j=json.loads(_o); _v=_j["verdict_txt"]
-            _c={"ACHETER":"#3fb950","VENDRE":"#f85149","GARDER":"#3fb950","ATTENDRE":"#8b949e"}[_v]
-            fig.text(0.06,y0-0.12,"Alerte 2",color=MUTED,fontsize=12,va="center"); fig.text(0.20,y0-0.12,_j["resume"],color=_c,fontsize=11.5,fontweight="bold",va="center")
-        except Exception: pass
-        fig.text(0.5,0.012,"Règle de position, non validée sur le BTC · signe call/put = convention · données Deribit",color=MUTED,fontsize=10,ha="center",va="center")
+        fig.text(0.5,0.025,"Règle de position, non validée sur le BTC · signe call/put = convention · données Deribit",color=MUTED,fontsize=10,ha="center",va="center")
         png="/tmp/alerte_btc.png"; fig.savefig(png,facecolor=BG); plt.close(fig)
     except Exception as e:
         png=None; carte+=f"\n(image indisponible : {type(e).__name__})"
