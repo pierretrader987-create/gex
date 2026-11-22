@@ -159,9 +159,8 @@ if (alerte and nouvelle) or rapport:
             ax.axhspan(W*0.99,W*1.01,color=COL[key],alpha=0.13,lw=0)
         for w in walls:
             k=typ(w); c=COL[k]
-            ax.plot([xs[-1]-timedelta(hours=1),xs[-1]+timedelta(hours=2)],[w,w],color=c,lw=3,alpha=0.95,solid_capstyle="butt")
             g=(f"call {C.get(w,0):.1f} / put {P.get(w,0):.1f} M$")
-            ax.text(xs[-1]+timedelta(hours=3),w,f"MUR {k}  {fm(w)}"+(" ★" if w==MG else ""),color=INK,fontsize=10.5,fontweight="bold",va="bottom",ha="left",clip_on=False)
+            ax.text(xs[-1]+timedelta(hours=3),w,f"MUR {k}  {fm(w)}"+(" ★" if w==MG else ""),color=c,fontsize=10.5,fontweight="bold",va="bottom",ha="left",clip_on=False)
             ax.text(xs[-1]+timedelta(hours=3),w,g,color=MUTED,fontsize=8.5,va="top",ha="left",clip_on=False)
         MAG="#f778ba"
         if MG not in walls and lo<=MG<=hi:
