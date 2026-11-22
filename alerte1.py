@@ -261,6 +261,42 @@ if (alerte and nouvelle) or rapport:
                 A_=Image.open(png).convert("RGB"); B_=Image.open("/tmp/_liste.png").convert("RGB")
                 C_=Image.new("RGB",(A_.width,A_.height+B_.height),(21,22,28)); C_.paste(A_,(0,0)); C_.paste(B_,(0,A_.height)); C_.save(png)
         except Exception: pass
+        try:
+            from PIL import Image
+            DET={"Ventes au détail US (oct.)":("prévu +0,2 %","publié +0,2 % : conforme (hors autos +0,6 % vs +0,4 % prévu)"),
+                 "Fed : procès-verbal":("prévu : hausse 25 pb en déc. (≈95 %)","publié : presque tous veulent d'autres hausses, +0,50 évoqué"),
+                 "Chômage hebdo US":("prévu 197 k","publié 203 k (au-dessus) · demandes continues +70 k")}
+            DD={"2026-11-10":("CPI oct. : m/m +0,4 %, coeur 0,3 %","prévu m/m 0,3 % → plus chaud"),"2026-11-06":("Emploi oct. : +165 k, chômage 4,1 %","prévu +65 k → au-dessus"),"2026-10-28":("Fed : maintien 3,75-4 % (10-2)","prévu : maintien → restrictif léger"),"2026-10-14":("CPI sept. : m/m +0,6 %","prévu a/a 3,6 % → plus chaud"),"2026-10-02":("Emploi sept. : +29 k","prévu +89 k → sous le consensus")}
+            def reac(d0):
+                j=min(range(len(xs)),key=lambda q:abs((xs[q]-d0).total_seconds()))
+                if xs[j]>d0 and j>0: j-=1
+                def r(h):
+                    return (f"{(ys[j+h]/ys[j]-1)*100:+.1f} %".replace(".",",")) if j+h<len(ys) else "pas encore"
+                return f"BTC 1 h {r(1)} · 24 h {r(24)} · 3 j {r(72)}"
+            LN=[]
+            for d_,nm_,co_ in _E:
+                if d_>datetime.now(TZ): continue
+                if nm_ in DET: ti,pu=DET[nm_]; LN.append((co_,f"{_JS[d_.weekday()]} {d_.day}/{d_.month} {d_:%Hh%M} · {nm_}",f"{ti} → {pu}",reac(d_)))
+                elif d_.strftime("%Y-%m-%d") in DD: t1,t2=DD[d_.strftime("%Y-%m-%d")]; LN.append((co_,f"{_JS[d_.weekday()]} {d_.day}/{d_.month} {d_:%Hh%M} · {t1}",t2,reac(d_)))
+            UP=[("#a371f7","mer 9/12 20h00 · Fed : décision","prévu : hausse de 25 pb (≈95 % selon CME FedWatch)"),("#39c5cf","jeu 10/12 14h30 · CPI (novembre)","prévision pas encore publiée")]
+            UP=[u for u in UP if datetime.now(TZ)<datetime(2026,12,10,23,tzinfo=TZ)]
+            n3=len(LN); h3=0.95+n3*0.62+(0.5+len(UP)*0.34 if UP else 0)+0.5
+            f3=plt.figure(figsize=(9,h3),dpi=100,facecolor=BG)
+            f3.text(0.06,1-0.45/h3,"Annonces de la semaine : prévu → publié → réaction du BTC",color=INK,fontsize=13,fontweight="bold",va="center")
+            yy=0.95
+            for co_,t1,t2,t3 in LN:
+                f3.text(0.06,1-yy/h3,t1,color=co_,fontsize=10.5,fontweight="bold",va="center"); yy+=0.25
+                f3.text(0.06,1-yy/h3,t2,color=INK,fontsize=9,va="center"); yy+=0.21
+                f3.text(0.06,1-yy/h3,t3+"  (à l'heure près)",color=MUTED,fontsize=9,va="center"); yy+=0.30
+            if UP:
+                f3.text(0.06,1-(yy+0.1)/h3,"À venir",color=INK,fontsize=12,fontweight="bold",va="center"); yy+=0.45
+                for co_,t1,t2 in UP:
+                    f3.text(0.06,1-yy/h3,t1+" : "+t2,color=co_,fontsize=9.5,va="center"); yy+=0.34
+            f3.text(0.06,1-(yy+0.1)/h3,"Sources : Census, Fed, Dép. du Travail (Reuters, AP). Réaction : prix Deribit. Aucune prédiction.",color=MUTED,fontsize=7.5,va="center")
+            f3.savefig("/tmp/_ann.png",facecolor=BG); plt.close(f3)
+            A_=Image.open(png).convert("RGB"); B_=Image.open("/tmp/_ann.png").convert("RGB")
+            C_=Image.new("RGB",(A_.width,A_.height+B_.height),(21,22,28)); C_.paste(A_,(0,0)); C_.paste(B_,(0,A_.height)); C_.save(png)
+        except Exception: pass
     except Exception as e:
         png=None; carte+=f"\n(image indisponible : {type(e).__name__})"
 print(json.dumps(dict(heure_paris=hp.hour,jour_paris=hp.weekday(),alerte=alerte,nouvelle=nouvelle,rapport=rapport,png=png,carte=carte,suite=suite,details=details,csv=csv),ensure_ascii=False))
