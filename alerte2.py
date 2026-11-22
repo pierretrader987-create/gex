@@ -73,45 +73,78 @@ derniere=max(((d,NOM[k]) for k,v in L.items() for d in v if d<=now),default=None
 prochaine=min(((d,NOM[k]) for k,v in L.items() for d in v if d>now),default=None)
 fm=lambda v:f"{v:,.0f}".replace(","," ")
 # dessin
+EMB=[("2026-09-16","Fed","hausse 25 pb à 3,75-4 % (12-0)","hausse (≈86 % prévu)","restrictif",-0.13,1.23,7.66),("2026-10-02","Emploi","sept : +29 k, chômage 4,2 %","+89 k","sous le consensus",0.47,-2.05,-0.23),("2026-10-14","CPI","sept : m/m +0,6 %","a/a 3,6 %","plus chaud",-0.9,-3.01,-2.33),("2026-10-28","Fed","maintien 3,75-4 % (10-2)","maintien","restrictif léger",0.24,0.08,-3.92),("2026-11-06","Emploi","oct : +165 k, chômage 4,1 %","+65 k","au-dessus du consensus",-0.18,-0.18,-1.47),("2026-11-10","CPI","oct : m/m +0,4 %, coeur 0,3 %","m/m 0,3 %","plus chaud",-0.86,-0.64,-6.93)]
+def rf(v): return f"{v:+.1f}".replace(".",",")+" %"
 if nouvelle:
     texte={"ACHETER":"ACHETER (les 3/4)","VENDRE":"VENDRE (les 3/4)","GARDER":"GARDER · sortie ▲","ATTENDRE":"ATTENDRE"}[V]
     if V=="VENDRE" and "SORTIE_BAS" in ETATS: texte="VENDRE · sortie ▼ (racheter plus bas)"
     couleur={"ACHETER":"#3fb950","VENDRE":"#f85149","GARDER":"#3fb950","ATTENDRE":"#6e7681"}[V]
-    fig=plt.figure(figsize=(9,16),dpi=100,facecolor="#14161c")
-    fig.text(.06,.965,f"BTC  {fm(S)} $",color="#e6edf3",fontsize=28,fontweight="bold",va="center")
-    fig.text(.94,.965,now.strftime("%d/%m %H:%M"),color="#8b949e",fontsize=12,ha="right",va="center")
-    ba=fig.add_axes([.05,.895,.9,.05]); ba.axis("off"); ba.set_xlim(0,1); ba.set_ylim(0,1)
+    if V=="ATTENDRE": raison="Prix au milieu des ranges ou échelles qui se contredisent : rien à faire."
+    elif "SORTIE_BAS" in ETATS: raison="Sortie par le BAS : tendance baissière → on vend, on rachète plus bas."
+    elif "SORTIE_HAUT" in ETATS: raison="Sortie par le HAUT : tendance haussière → on garde."
+    elif V=="VENDRE": raison="Prix en haut du range → on vend environ les 3/4, on rachète en bas."
+    else: raison="Prix en bas du range → on rachète."
+    if proches: raison2="Annonce à ±2 jours ("+", ".join(f"{p[1]} {p[2].strftime('%d/%m')}" for p in proches)+") : mouvement brusque possible, verdict à confirmer après l'annonce."
+    else: raison2="Aucune annonce à ±2 jours : le verdict vient seulement des ranges."
+    H=22
+    fig=plt.figure(figsize=(9,H),dpi=100,facecolor="#14161c")
+    fig.text(.06,.977,f"BTC  {fm(S)} $",color="#e6edf3",fontsize=28,fontweight="bold",va="center")
+    fig.text(.94,.977,now.strftime("%d/%m %H:%M"),color="#8b949e",fontsize=12,ha="right",va="center")
+    ba=fig.add_axes([.05,.925,.9,.038]); ba.axis("off"); ba.set_xlim(0,1); ba.set_ylim(0,1)
     ba.add_patch(FancyBboxPatch((0,0),1,1,boxstyle="round,pad=0,rounding_size=0.3",fc=couleur,ec="none")); ba.text(.5,.5,texte,color="white",fontsize=21,fontweight="bold",ha="center",va="center")
-    y=.865
+    fig.text(.06,.909,raison,color="#e6edf3",fontsize=10.5,fontweight="bold",va="center")
+    fig.text(.06,.894,raison2,color="#ffa657" if proches else "#8b949e",fontsize=9.5,va="center")
+    y=.876
     for (nm,_,x,m),s in zip(ECH,SG):
-        r=s[1]; t=(f"{nm} : range {fm(r[2])}-{fm(r[3])} ({(r[3]/r[2]-1)*100:.0f} % de large), prix à {(Cf[-1]-r[2])/(r[3]-r[2])*100:.0f} %" if r else f"{nm} : pas de range en ce moment")
+        r=s[1]; t=(f"{nm} : range {fm(r[2])} - {fm(r[3])} $ ({(r[3]/r[2]-1)*100:.0f} % de large), prix à {(Cf[-1]-r[2])/(r[3]-r[2])*100:.0f} % du range" if r else f"{nm} : pas de range en ce moment")
         if s[0] in("SORTIE_BAS","SORTIE_HAUT"): t=f"{nm} : sortie du range {'vers le BAS' if s[0]=='SORTIE_BAS' else 'vers le HAUT'}"
-        fig.text(.06,y,t,color="#c9d1d9",fontsize=9.5,va="center"); y-=.0175
-    if proches: fig.text(.06,y,"Annonce à ±2 jours : "+", ".join(f"{p[1]} {p[2].strftime('%d/%m')}" for p in proches)+" -> prudence, le prix peut bouger fort",color="#ffa657",fontsize=9.5,va="center")
-    # 3 echelles
-    P=[("1 SEMAINE · bougies 1 h",TH,(OH,HH,LH,CH),None,"h"),("6 MOIS · bougies 1 jour",Tf[-185:],[a[:-1][-185:] for a in (OD,HD,LD,CD)],ECH[0],"d"),("1 AN · bougies 1 jour",Tf[-366:],[a[:-1][-366:] for a in (OD,HD,LD,CD)],ECH[1],"d")]
-    for k,(tt,T,(O,H,Lw,C),ec,u) in enumerate(P):
-        ax=fig.add_axes([0.07,0.60-k*0.215,0.88,0.17]); ax.set_facecolor("#1c1f27"); w=0.03 if u=="h" else 0.7
-        for t,o,h,l,c in zip(T,O,H,Lw,C):
+        fig.text(.06,y,t,color="#c9d1d9",fontsize=9.5,va="center"); y-=.0135
+    rw=open_range(list(CH),0.03,24)
+    fig.text(.06,y,"1 SEMAINE : ranges dessinés pour information, aucune alerte",color="#8b949e",fontsize=9.5,va="center")
+    P=[("1 SEMAINE · bougies 1 h",TH,(OH,HH,LH,CH),("s",0,0.03,24),"h",[.07,.735,.88,.10],None),
+       ("6 MOIS · bougies 1 jour",Tf[-185:],[a[:-1][-185:] for a in (OD,HD,LD,CD)],ECH[0],"d",[.07,.585,.88,.11],[.07,.545,.88,.030]),
+       ("1 AN · bougies 1 jour",Tf[-366:],[a[:-1][-366:] for a in (OD,HD,LD,CD)],ECH[1],"d",[.07,.395,.88,.11],[.07,.355,.88,.030])]
+    for (tt,T,(O,H_,Lw,C),ec,u,pos,lane) in P:
+        ax=fig.add_axes(pos); ax.set_facecolor("#1c1f27"); w=0.03 if u=="h" else 0.7
+        for t,o,h,l,c in zip(T,O,H_,Lw,C):
             col="#3fb950" if c>=o else "#f85149"; x=md.date2num(t); ax.plot([x,x],[l,h],color=col,lw=.7); ax.add_patch(Rectangle((x-w/2,min(o,c)),w,max(abs(c-o),h*.0004),color=col,lw=0))
-        if ec:
-            for a,b,mn,mx,dr,kk in ranges(list(C),ec[2],ec[3]):
-                ax.add_patch(Rectangle((md.date2num(T[a]),mn),md.date2num(T[b])-md.date2num(T[a]),mx-mn,fc=(.82,.6,.13,.14),ec="#d29922",ls="--",lw=1))
-                ax.scatter(md.date2num(T[kk]),C[kk]*(1.03 if dr=="up" else .97),marker="^" if dr=="up" else "v",s=70,color="#3fb950" if dr=="up" else "#f85149",ec="white",zorder=5)
-            orr=open_range(C,ec[2],ec[3])
-            if orr: a,b,mn,mx=orr; ax.add_patch(Rectangle((md.date2num(T[a]),mn),md.date2num(T[b])-md.date2num(T[a]),mx-mn,fc=(.82,.6,.13,.22),ec="#f2cc60",lw=1.6))
-            for kk,v in L.items():
-                for d in v:
-                    if T[0]<=d<=T[-1]:
-                        j=int(np.argmin([abs((t-d).total_seconds()) for t in T])); ax.scatter(md.date2num(T[j]),H[j]*1.012,s=34,color=COL[kk],ec="white",lw=.5,zorder=6)
+        for a,b,mn,mx,dr,kk in ranges(list(C),ec[2],ec[3]):
+            ax.add_patch(Rectangle((md.date2num(T[a]),mn),md.date2num(T[b])-md.date2num(T[a]),mx-mn,fc=(.82,.6,.13,.14),ec="#d29922",ls="--",lw=1))
+            ax.scatter(md.date2num(T[kk]),C[kk]*(1.03 if dr=="up" else .97),marker="^" if dr=="up" else "v",s=70,color="#3fb950" if dr=="up" else "#f85149",ec="white",zorder=5)
+            if u=="d":
+                ax.text(md.date2num(T[a]),mx,f"{mx/1000:.1f}k",color="#f2cc60",fontsize=6.5,va="bottom"); ax.text(md.date2num(T[a]),mn,f"{mn/1000:.1f}k",color="#f2cc60",fontsize=6.5,va="top")
+        orr=open_range(C,ec[2],ec[3])
+        if orr:
+            a,b,mn,mx=orr; ax.add_patch(Rectangle((md.date2num(T[a]),mn),md.date2num(T[b])-md.date2num(T[a]),mx-mn,fc=(.82,.6,.13,.22),ec="#f2cc60",lw=1.6))
+            ax.text(md.date2num(T[b]),mx,f" haut {fm(mx)}",color="#f2cc60",fontsize=7.5,va="bottom",ha="right"); ax.text(md.date2num(T[b]),mn,f" bas {fm(mn)}",color="#f2cc60",fontsize=7.5,va="top",ha="right")
+        for kk,v in L.items():
+            for d in v:
+                if T[0]<=d<=T[-1]:
+                    j=int(np.argmin([abs((t-d).total_seconds()) for t in T])); up=C[j]>=O[j]
+                    ax.scatter(md.date2num(T[j]),H_[j]*1.012,s=95,color="#3fb950" if up else "#f85149",ec=COL[kk],lw=1.8,zorder=6)
+                    ax.text(md.date2num(T[j]),H_[j]*1.012,NOM[kk][0],color="white",fontsize=6.5,fontweight="bold",ha="center",va="center",zorder=7)
         ax.set_title(tt,color="#e6edf3",fontsize=11,loc="left",pad=3)
         ax.tick_params(colors="#8b949e",labelsize=8); [s_.set_visible(False) for s_ in ax.spines.values()]; ax.grid(axis="y",color="#2a2e38",lw=.5)
         ax.xaxis.set_major_formatter(md.DateFormatter("%d/%m" if u=="h" else "%m/%y")); ax.autoscale_view(); lo,hi=ax.get_ylim(); ax.set_ylim(lo,hi*1.01)
+        if lane:
+            la=fig.add_axes(lane,sharex=ax); la.set_facecolor("#1c1f27"); la.set_ylim(-.6,2.6); la.set_yticks([]); la.tick_params(labelbottom=False,length=0); [s_.set_visible(False) for s_ in la.spines.values()]
+            for kk,yy in (("FED",2),("CPI",1),("NFP",0)):
+                la.text(0.003,yy,NOM[kk],transform=la.get_yaxis_transform(),color=COL[kk],fontsize=7,va="center")
+                xs=[md.date2num(d) for d in L[kk] if T[0]<=d<=T[-1]]; la.scatter(xs,[yy]*len(xs),s=26,color=COL[kk],ec="white",lw=.4)
+    fig.text(.06,.336,"Annonces correspondantes (publié · attendu · ton · réaction du BTC)",color="#e6edf3",fontsize=10.5,fontweight="bold",va="center")
+    yy=.319
+    rows=list(EMB[-6:])
+    for d_,t_,pub,att,ton,r1,r24,r3 in rows[::-1]:
+        dd=dt.datetime.fromisoformat(d_)
+        fig.text(.06,yy,f"{dd.strftime('%d/%m')} {t_} : {pub}",color="#e6edf3",fontsize=8.5,fontweight="bold",va="center"); yy-=.0105
+        fig.text(.06,yy,f"attendu {att} · {ton} · BTC 1 h {rf(r1)} · 24 h {rf(r24)} · 3 j {rf(r3)}",color="#8b949e",fontsize=7.5,va="center"); yy-=.0145
     fig.text(.06,.150,"Macro",color="#8b949e",fontsize=11,va="center"); fig.text(.2,.150,(f"prochaine annonce : {prochaine[1]} le {prochaine[0].strftime('%d/%m/%Y')}" if prochaine else "pas de date connue"),color="#e6edf3",fontsize=12,fontweight="bold",va="center")
-    fig.text(.06,.122,"Titre",color="#8b949e",fontsize=11,va="center"); fig.text(.2,.122,(("Derniere annonce : "+TITRE) if TITRE else "non trouve"),color="#e6edf3",fontsize=12,va="center")
-    fig.text(.06,.085,"Points = annonces : violet Fed · bleu CPI · orange Emploi   |   boite jaune = range   |   fleches = sortie de range",color="#8b949e",fontsize=8.5,va="center")
-    fig.text(.5,.045,"Regle, non validee sur le BTC · donnees Deribit · tu decides",color="#8b949e",fontsize=9,ha="center",va="center")
+    fig.text(.06,.126,"Titre",color="#8b949e",fontsize=11,va="center"); fig.text(.2,.126,(("Dernière annonce : "+TITRE) if TITRE else "non trouvé"),color="#e6edf3",fontsize=11,va="center")
+    fig.text(.06,.102,"Pastilles F / C / E = annonce Fed / CPI / Emploi (vert si le jour monte, rouge s'il baisse)  |  boîte jaune = range  |  flèches = sortie",color="#8b949e",fontsize=7.5,va="center")
+    fig.text(.5,.078,"Règle, non validée sur le BTC · données Deribit · tu décides",color="#8b949e",fontsize=9,ha="center",va="center")
     png="/tmp/alerte2_gm.png"; fig.savefig(png,facecolor="#14161c"); plt.close(fig)
+    from PIL import Image
+    im=Image.open(png); im.crop((0,0,im.width,int(im.height*0.945))).save(png)
 else: png=None
 csv=";".join(str(v) for v in [now.strftime("%Y-%m-%d %H:%M"),round(S),V,"/".join(e or "-" for e in ETATS),"NOUVELLE" if nouvelle else "SUITE",(proches[0][1] if proches else "")])
 print(json.dumps(dict(verdict=V,etats=ETATS,nouvelle=nouvelle,png=png,csv=csv,derniere=(f"{derniere[1]} du {derniere[0].strftime('%d/%m/%Y')}" if derniere else None)),ensure_ascii=False))
