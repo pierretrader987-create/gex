@@ -205,10 +205,27 @@ if (alerte and nouvelle) or rapport:
                     tb=ys[i_]<W_*0.99 and ys[i_-1]>=W_*0.99 and ys[i_-6]>W_
                     th=ys[i_]>W_*1.01 and ys[i_-1]<=W_*1.01 and ys[i_-6]<W_
                     if arr or tb or th: _hist.append((i_,W_,"A" if arr else "T"))
+            _hist.sort()
+            _m=[]
+            for h_ in _hist:
+                if _m and _m[-1][1]==h_[1] and _m[-1][2]==h_[2] and h_[0]-_m[-1][0]<=6: continue
+                _m.append(h_)
+            _hist=_m
+            _JS=["lun","mar","mer","jeu","ven","sam","dim"]
+            fig.canvas.draw(); _rd=fig.canvas.get_renderer(); _placed=[]
+            _cand=[(0,16),(0,60),(0,-60),(60,0),(-60,0),(0,-16),(26,14),(-26,14),(26,-14),(-26,-14),(0,30),(0,-30),(40,0),(-40,0),(40,24),(-40,24),(40,-24),(-40,-24),(0,44),(0,-44)]
             for i_,W_,k_ in _hist:
-                ax.plot([xs[i_]],[ys[i_]],"D",color=_cw[typ(W_)],ms=9,mec="white",mew=1.4,zorder=8)
-                ax.text(xs[i_],ys[i_]*1.0,k_,color="white",fontsize=6.5,fontweight="bold",ha="center",va="center",zorder=9)
-            fig.text(0.5,0.185,f"◆ A = arrivée sur un mur · ◆ T = mur traversé · {len(_hist)} cette semaine (recalculé avec les murs d'aujourd'hui)",color=MUTED,fontsize=9.5,ha="center",va="center")
+                ax.plot([xs[i_]],[ys[i_]],"D",color=_cw[typ(W_)],ms=8,mec="white",mew=1.2,zorder=8)
+                lab=f"{_JS[xs[i_].weekday()]} {xs[i_]:%H}h · {'arrivée' if k_=='A' else 'traversé'} {typ(W_)} {fm(W_)}"
+                for dx_,dy_ in _cand:
+                    t_=ax.annotate(lab,(xs[i_],ys[i_]),xytext=(dx_,dy_),textcoords="offset points",fontsize=6.3,color="white",ha="center",va="center",zorder=10,
+                        bbox=dict(boxstyle="round,pad=0.18",fc=_cw[typ(W_)],ec="none",alpha=0.92),arrowprops=dict(arrowstyle="-",color=_cw[typ(W_)],lw=0.7))
+                    bb=t_.get_window_extent(_rd).expanded(1.03,1.15)
+                    axb=ax.get_window_extent(_rd)
+                    if bb.x0>=axb.x0 and bb.x1<=axb.x1+90 and all(not bb.overlaps(p_) for p_ in _placed): _placed.append(bb); break
+                    if (dx_,dy_)==_cand[-1]: _placed.append(bb)
+                    else: t_.remove()
+            fig.text(0.5,0.185,f"{len(_hist)} alertes cette semaine : jour, heure, type · recalculé avec les murs d'aujourd'hui",color=MUTED,fontsize=9.5,ha="center",va="center")
         except Exception: pass
         ax.plot([xs[-1]],[ys[-1]],"o",color=INK,ms=8,mec=CARD,mew=2)
         ax.text(xs[0]+timedelta(hours=3),S,f" prix {fm(S)} ",color=BG,fontsize=10.5,fontweight="bold",va="center",bbox=dict(boxstyle="round,pad=0.25",fc=INK,ec="none"))
