@@ -66,6 +66,7 @@ detail=[(s[0] or "") for s in SG]
 Vh_sig=[signal(Cf[:-1],x,m)[0] for _,_,x,m in ECH]
 nouvelle=(V!="ATTENDRE") and (ETATS!=Vh_sig)
 if "--force" in ARG: nouvelle=True
+if "--resume" in ARG: nouvelle=False
 # annonces proches
 now=Tf[-1]+dt.timedelta(days=1) if JOUR else dt.datetime.now()
 proches=[(abs((d-now).days),NOM[k],d) for k,v in L.items() for d in v if abs((d-now).days)<=2]
@@ -147,4 +148,9 @@ if nouvelle:
     im=Image.open(png); im.crop((0,0,im.width,int(im.height*0.945))).save(png)
 else: png=None
 csv=";".join(str(v) for v in [now.strftime("%Y-%m-%d %H:%M"),round(S),V,"/".join(e or "-" for e in ETATS),"NOUVELLE" if nouvelle else "SUITE",(proches[0][1] if proches else "")])
-print(json.dumps(dict(verdict=V,etats=ETATS,nouvelle=nouvelle,png=png,csv=csv,derniere=(f"{derniere[1]} du {derniere[0].strftime('%d/%m/%Y')}" if derniere else None)),ensure_ascii=False))
+def _st(nm,s):
+    if s[0] in("SORTIE_BAS","SORTIE_HAUT"): return f"{nm} sortie {'▼' if s[0]=='SORTIE_BAS' else '▲'}"
+    if s[1]: return f"{nm} range, prix à {(Cf[-1]-s[1][2])/(s[1][3]-s[1][2])*100:.0f} %"
+    return f"{nm} pas de range"
+resume=V+" · "+" · ".join(_st(e[0],s) for e,s in zip(ECH,SG))+(f" · prochaine : {prochaine[1]} {prochaine[0].strftime('%d/%m')}" if prochaine else "")
+print(json.dumps(dict(verdict=V,etats=ETATS,nouvelle=nouvelle,png=png,csv=csv,resume=resume,verdict_txt=V,derniere=(f"{derniere[1]} du {derniere[0].strftime('%d/%m/%Y')}" if derniere else None)),ensure_ascii=False))

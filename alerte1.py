@@ -1,5 +1,5 @@
 # gex_btc_v9 - alerte d'ARRIVEE sur un mur GEX BTC (Deribit public)
-import json, math, re, sys, time, urllib.request
+import json, math, re, sys, time, urllib.request, subprocess
 from datetime import datetime, timezone, timedelta
 B="https://www.deribit.com/api/v2/public/"
 def get(p):
@@ -204,7 +204,14 @@ if (alerte and nouvelle) or rapport:
         fig.text(0.06,y0-0.045,"Marché",color=MUTED,fontsize=12,va="center")
         fig.text(0.20,y0-0.045,f"{tend} {chg7:+.1f} % sur 7 j  ·  gamma {'NÉGATIF (les murs freinent peu)' if net<0 else 'POSITIF'}",color=INK,fontsize=14,fontweight="bold",va="center")
         if conf: fig.text(0.06,y0-0.08,"Confirmation",color=MUTED,fontsize=12,va="center"); fig.text(0.20,y0-0.08,conf,color=INK,fontsize=13,fontweight="bold",va="center")
-        fig.text(0.5,0.025,"Règle de position, non validée sur le BTC · signe call/put = convention · données Deribit",color=MUTED,fontsize=10,ha="center",va="center")
+        try:
+            with urllib.request.urlopen("https://raw.githubusercontent.com/pierretrader987-create/gex/main/alerte2.py",timeout=20) as _r: open("/tmp/_a2.py","wb").write(_r.read())
+            _o=subprocess.run([sys.executable,"-I","/tmp/_a2.py","--resume"],capture_output=True,text=True,timeout=90).stdout.strip().splitlines()[-1]
+            _j=json.loads(_o); _v=_j["verdict_txt"]
+            _c={"ACHETER":"#3fb950","VENDRE":"#f85149","GARDER":"#3fb950","ATTENDRE":"#8b949e"}[_v]
+            fig.text(0.06,y0-0.12,"Alerte 2",color=MUTED,fontsize=12,va="center"); fig.text(0.20,y0-0.12,_j["resume"],color=_c,fontsize=11.5,fontweight="bold",va="center")
+        except Exception: pass
+        fig.text(0.5,0.012,"Règle de position, non validée sur le BTC · signe call/put = convention · données Deribit",color=MUTED,fontsize=10,ha="center",va="center")
         png="/tmp/alerte_btc.png"; fig.savefig(png,facecolor=BG); plt.close(fig)
     except Exception as e:
         png=None; carte+=f"\n(image indisponible : {type(e).__name__})"
